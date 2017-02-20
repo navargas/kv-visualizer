@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+
+<title>kvViz</title>
+<link href='https://fonts.googleapis.com/css?family=Roboto:900,400,100,200'
+  rel='stylesheet' type='text/css'>
+
+<style>
+/* Background pattern from Subtle Patterns */
+[v-cloak] { display: none }
+body, html {
+  font-family: "Roboto", Helvetica, Arial, sans-serif;
+  font-size: 48px;
+  font-weight: 200;
+  color: #3c3c3c;
+  background-color: #e6e6e6;
+  background-image: url(small_steps.png);
+  width: 800px;
+  margin: auto;
+}
+body {
+  background-color: rgba(255, 255, 255, 0);
+  background-image: none;
+  margin-bottom: 20px;
+}
+.container {
+  background-color: white;
+  padding: 10px 24px;
+  margin-top: 20px;
+  border-radius: 20px;
+  border: 1px solid black;
+}
+#content {
+  padding: 20px 24px;
+}
+button {
+	border-radius: 41px;
+	color: black;
+	background-color: white;
+	text-decoration: none;
+	font-size: 32px;
+	font-weight: 100;
+	border: solid 1px black;
+	padding: 2px 16px;
+	cursor: pointer;
+}
+.nodebox {
+  padding: 10px 24px;
+  margin-top: 20px;
+  margin: 10px;
+  width: 24%;
+  height: 117px;
+  justify-content: flex-start;
+  border-radius: 20px;
+  border: 1px solid black;
+}
+.nodetitle {
+  font-weight: 900;
+  font-size: small;
+  position: absolute; 
+  text-align: center;
+}
+.nodelabel {
+  font-weight: 400;
+  margin: 28px auto;
+  text-align: center;
+}
+.nodesBox {
+	display: flex;
+	flex-direction: row;
+	box-sizing: border-box;
+	margin: 0 auto;
+	flex-flow: row wrap;
+}
+.buttonbox {
+  justify-content: space-between;
+}
+.buttonbox > button {
+  margin-top: 13px;
+}
+</style>
+
+<div class="container">
+  K/V Visualizer
+</div>
+
+<div class="container" id="content">
+  <div>
+    <span>Total Keys: {{total}}</span>
+    <span style="float:right;">Nodes: {{nodes.length}}</span>
+  </div>
+  <div class="nodesBox">
+    <node-info v-for="n in nodes" v-bind:item="n">
+    </node-info>
+  </div>
+  <div class="nodesBox buttonbox">
+    <button title="Insert 10 random keys and values"
+      v-on:click="insertRandom(10)"
+      style="background-color:rgba(255, 0, 0, 0.13)">
+      Insert 10 keys
+    </button>
+    <button title="Insert 1000 random keys and values"
+      v-on:click="insertRandom(1000)"
+      style="background-color:rgba(0, 161, 255, 0.13)">
+      Insert 1000 keys
+    </button>
+    <button title="Remove keys that were added by this app"
+      v-on:click="removeAll()"
+      style="background-color:rgba(255, 247, 0, 0.13)">
+      Remove all keys
+    </button>
+    <button title="Read all keys to update owner location"
+      v-on:click="refresh()"
+      style="background-color:rgba(0, 255, 22, 0.13)">
+      Refresh Key Locations
+    </button>
+  </div>
+</div>
+
+<script src="/vue.js"></script>
+<script src="/common.js"></script>
+<script src="https://cdn.jsdelivr.net/vue.resource/1.2.0/vue-resource.min.js"></script>
+<script>
+Vue.component('node-info', {
+  template: '<span class="nodebox" v-bind:style="fill">' +
+            '<span class="nodetitle">{{addr}}</span>' +
+            '<div class="nodelabel">{{count}}</div></span>',
+  props: ['item'],
+  computed: {
+    fill: function() {
+      var percent = this.item.count / this.$parent.total * 100;
+      var s = 'linear-gradient(to top, rgb(114, 152, 255) ' + percent;
+      s += '%, rgba(125,185,232,0) 0%)';
+      return {'background':s};
+    }
+  },
+  data: function() {
+    return this.item;
+  }
+});
+var v = new Vue({
+  el:'#content',
+  computed: {
+    total: function() {
+      return this.nodes.reduce(function(acc, value) {
+        return acc + value.count;
+      }, 0);
+    }
+  },
+  mounted:function() {
+    var view = getCookie('view').split(',');
+    console.log(view);
+    for (var i=0; i<view.length; i++) {
+      var addr = view[i];
+      if (addr.length > 0) {
+        this.nodes.push({addr:addr, count:0});
+      }
+    }
+    console.log('ok');
+  },
+  methods: {
+    refresh: function() {
+      this.$http.post('/refresh').then(function(res) {
+      }, function(err) {
+        console.error(err);
+        alert('Error, see web console');
+      });
+    },
+    removeAll: function() {
+      this.$http.post('/removeall').then(function(res) {
+      }, function(err) {
+        console.error(err);
+        alert('Error, see web console');
+      });
+    },
+    insertRandom: function(count) {
+      this.$http.post('/insert', {count}).then(function(res) {
+      }, function(err) {
+        console.error(err);
+        alert('Error, see web console');
+      });
+    }
+  },
+  data: {
+    nodes: []
+  }
+});
+</script>
