@@ -245,11 +245,7 @@ var v = new Vue({
       });
     },
     removeAll: function() {
-      this.$http.post('/removeall').then(function(res) {
-      }, function(err) {
-        console.error(err);
-        alert('Error, see web console');
-      });
+      alert('Not yet supported');
     },
     insertRandom: function(count) {
       this.$http.post('/insert', {count}).then(function(res) {
@@ -258,7 +254,7 @@ var v = new Vue({
         console.error(err);
         alert('Error, see web console');
       }).then(function(resjson) {
-        alert('Not yet supported');
+        this.updateTotals(resjson);
       });
     }
   },
