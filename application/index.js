@@ -34,7 +34,7 @@ app.use(bodyParser.json());
 function getKeyOwner(k, cb) {
     onNode++;
     var options = {
-        url: fmt('http://%s/%s', nodes[onNode % nodes.length], k),
+        url: fmt('http://%s/kvs/%s', nodes[onNode % nodes.length], k),
         method: 'GET'
     }
     function attemptCon() {
@@ -43,7 +43,7 @@ function getKeyOwner(k, cb) {
         con++;
         request(options, (err, r, body) => {
             con--;
-            if (err || r.statusCode != 200) {
+            if (err) {
                 console.error('HTTP error', err, body);
                 cb(undefined);
             } else {
@@ -64,13 +64,13 @@ function getKeyOwner(k, cb) {
 function insertKey(k, v, cb) {
     if (MODE == 'round_robin') onNode++;
     var options = {
-        url: fmt('http://%s/%s', nodes[onNode % nodes.length], k),
-        method: 'POST',
+        url: fmt('http://%s/kvs/%s', nodes[onNode % nodes.length], k),
+        method: 'PUT',
         form: {val:v}
     }
     request(options, (err, r, body) => {
         // Round robin all the nodes to distribute load
-        if (err || r.statusCode != 200) {
+        if (err) {
             console.error('HTTP error', err, body);
         } else {
             var resp = JSON.parse(body);
