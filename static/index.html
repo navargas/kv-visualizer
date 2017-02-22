@@ -43,6 +43,9 @@ button {
 	padding: 2px 16px;
 	cursor: pointer;
 }
+.inactiveButton {
+  background-color: rgba(0, 255, 22, 0.129412);
+}
 .nodebox {
   padding: 10px 24px;
   margin-top: 20px;
@@ -72,10 +75,10 @@ button {
 	flex-flow: row wrap;
 }
 .buttonbox {
-  justify-content: space-between;
+  justify-content: center;
 }
 .buttonbox > button {
-  margin-top: 13px;
+  margin: 7px 4px;
 }
 </style>
 
@@ -110,16 +113,48 @@ button {
     </button>
     <button title="Read all keys to update owner location"
       v-on:click="refresh()"
-      style="background-color:rgba(0, 255, 22, 0.13)">
+      v-bind:class="{ 'inactiveButton' : !refreshInProgress }"
+      style="rgba(0, 255, 22, 0.129412)">
       Refresh Key Locations
     </button>
+    <button-insert-mode>
+    </button-insert-mode>
   </div>
 </div>
 
 <script src="/vue.js"></script>
 <script src="/common.js"></script>
-<script src="https://cdn.jsdelivr.net/vue.resource/1.2.0/vue-resource.min.js"></script>
+<script src="/vue-resource.min.js"></script>
 <script>
+Vue.component('button-insert-mode', {
+    template: '<button v-bind:title="btnTitle[btnMsg]"' +
+              'v-on:click="toggle()"' +
+              'style="background-color:rgba(194, 0, 255, 0.129412)">' +
+              '{{ btnOptions[btnMsg] }}' +
+              '</button>',
+    methods: {
+      toggle: function() {
+        var mode = this.btnMsg ? 'round_robin' : 'all_in_one';
+        this.$http.post('/mode', {mode}).then(function(res) {
+          return res.json();
+        }, function(err) {
+          console.error(err);
+          alert('Error, see web console');
+        }).then(function(resjson) {
+          this.btnMsg = this.btnMsg ? 0 : 1;
+        });
+      }
+    },
+    data: function() {
+      return {
+        btnOptions: ['Insert All-in-One', 'Insert Round Robin'],
+        btnMsg: 0,
+        btnTitle: ['Insert all keys into the first node',
+                   'Alternate nodes while inserting keys']
+      }
+    }
+
+});
 Vue.component('node-info', {
   template: '<span class="nodebox" v-bind:style="fill">' +
             '<span class="nodetitle">{{addr}}</span>' +
@@ -147,22 +182,66 @@ var v = new Vue({
     }
   },
   mounted:function() {
-    var view = getCookie('view').split(',');
-    console.log(view);
-    for (var i=0; i<view.length; i++) {
-      var addr = view[i];
-      if (addr.length > 0) {
-        this.nodes.push({addr:addr, count:0});
-      }
-    }
-    console.log('ok');
+    this.$http.get('/state').then(function(res) {
+      return res.json();
+    }, function(err) {
+      console.error(err);
+      alert('Error, see web console');
+    }).then(function(resjson) {
+      this.updateTotals(resjson);
+    });
   },
   methods: {
+    waitForUpdate: function() {
+      if (window.updateInterval) {
+        clearInterval(window.updateInterval);
+      }
+      this.refreshInProgress = true;
+      var that = this;
+      window.updateInterval = setInterval(function() {
+        that.$http.get('/refreshstatus').then(function(res) {
+          return res.json();
+        }, function(err) {
+          console.error(err);
+          clearInterval(window.updateInterval);
+          that.refreshInProgress = false;
+          alert('Error, see web console');
+        }).then(function(resjson) {
+          if (resjson.status != 'wait') {
+            that.updateTotals(resjson);
+            clearInterval(window.updateInterval);
+            that.refreshInProgress = false;
+          }
+        });
+      }, 1000);
+    },
+    nodeByAddr: function(addr) {
+      for (var i=0; i<this.nodes.length; i++) {
+        if (this.nodes[i].addr == addr) {
+          return this.nodes[i];
+        }
+      }
+      return undefined;
+    },
+    updateTotals: function(countObj) {
+      console.log(countObj);
+      for (var addr in countObj) {
+        var n = this.nodeByAddr(addr);
+        var count = countObj[addr];
+        if (addr && !n)
+          this.nodes.push({addr:addr, count:count});
+        else
+          n.count = count;
+      }
+    },
     refresh: function() {
       this.$http.post('/refresh').then(function(res) {
+        return res.json();
       }, function(err) {
         console.error(err);
         alert('Error, see web console');
+      }).then(function(resjson) {
+        this.waitForUpdate();
       });
     },
     removeAll: function() {
@@ -174,14 +253,18 @@ var v = new Vue({
     },
     insertRandom: function(count) {
       this.$http.post('/insert', {count}).then(function(res) {
+        return res.json();
       }, function(err) {
         console.error(err);
         alert('Error, see web console');
+      }).then(function(resjson) {
+        this.updateTotals(resjson);
       });
     }
   },
   data: {
-    nodes: []
+    nodes: [],
+    refreshInProgress: false
   }
 });
 </script>
