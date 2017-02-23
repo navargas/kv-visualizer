@@ -23,7 +23,7 @@ for (var i=0; i<nodes.length; i++) {
 }
 
 var con = 0;
-const MAXCON = 1000;
+const MAXCON = 800;
 setInterval(()=> {
     if (con > 0)
         console.log(fmt('%s active connections', con));
